@@ -1,0 +1,21 @@
+--- app/src/components/intelligence/ConfirmationModal.tsx
++++ app/src/components/intelligence/ConfirmationModal.tsx
+@@ -37,17 +37,9 @@ export function ConfirmationModal({ modal, onClose }: ConfirmationModalProps) {
+   const handleConfirm = () => {
+     modal.onConfirm(dontShowAgain);
+     onClose();
+-<<<<<<< HEAD
+     if (dontShowAgain) {
+       const key = modal.dontShowAgainKey || modal.title;
+       setDontShowAgainPreference(key, true);
+-=======
+-
+-    if (dontShowAgain && modal.preferenceKey) {
+-      try {
+-        localStorage.setItem(modal.preferenceKey, 'true');
+-      } catch (err) {
+-        console.warn('Failed to save dontShowAgain preference to localStorage:', err);
+-      }
+->>>>>>> origin/main
+     }
+   };

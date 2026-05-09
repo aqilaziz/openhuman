@@ -35,7 +35,7 @@ export function ConfirmationModal({ modal, onClose }: ConfirmationModalProps) {
   if (!modal.isOpen) return null;
 
   const handleConfirm = () => {
-    modal.onConfirm();
+    modal.onConfirm(dontShowAgain);
     onClose();
     if (dontShowAgain) {
       const key = modal.dontShowAgainKey || modal.title;

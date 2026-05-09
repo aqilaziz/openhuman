@@ -27,6 +27,7 @@
     "mock:api": "node scripts/mock-api-server.mjs",
     "mascot:render": "pnpm --dir remotion render:runtime-assets",
     "pr:checklist": "node scripts/check-pr-checklist.mjs",
+    "rabbit": "bash scripts/rabbit/cli.sh",
     "review": "bash scripts/review/cli.sh",
     "work": "bash scripts/work/cli.sh",
     "debug": "bash scripts/debug/cli.sh",
@@ -39,6 +40,11 @@
     "ws": "^8.20.0"
   },
   "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@scure/base": "^2.2.0",
+    "@scure/bip32": "^2.2.0",
+    "@scure/bip39": "^2.2.0",
     "@tauri-apps/api": "2.10.1"
   }
 }
