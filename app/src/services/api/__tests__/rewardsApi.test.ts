@@ -65,6 +65,92 @@ describe('normalizeRewardsSnapshot', () => {
     expect(snapshot.achievements[0].discordRoleStatus).toBe('unavailable');
     expect(snapshot.achievements[0].creditAmountUsd).toBeNull();
   });
+
+  it('handles edge cases in number parsing and normalization', () => {
+    const snapshot = normalizeRewardsSnapshot({
+      summary: {
+        unlockedCount: ' 42 ', // string number
+        totalCount: 'not-a-number', // string not a number
+        assignedDiscordRoleCount: NaN,
+      },
+      metrics: {
+        currentStreakDays: Infinity,
+        longestStreakDays: ' ',
+      },
+      achievements: [
+        {
+          id: 'ACH_1',
+          creditAmountUsd: 10, // finite number
+        },
+        {
+          id: 'ACH_2',
+          creditAmountUsd: Infinity, // non-finite number
+        },
+        {
+          id: 'ACH_3',
+          creditAmountUsd: NaN, // NaN number
+        },
+        {
+          id: 'ACH_4',
+          creditAmountUsd: '20', // string number
+        },
+        {
+          id: 'ACH_5',
+          creditAmountUsd: 'bad-string', // string not a number
+        },
+        {
+          id: 'ACH_6',
+          creditAmountUsd: ' ', // whitespace string
+        },
+        {
+          // missing id, should be filtered out
+          title: 'No ID',
+        },
+        null, // invalid achievement
+      ],
+    });
+
+    // Summary
+    expect(snapshot.summary.unlockedCount).toBe(42);
+    expect(snapshot.summary.totalCount).toBe(0); // 'not-a-number' -> 0
+    expect(snapshot.summary.assignedDiscordRoleCount).toBe(0); // NaN -> 0
+
+    // Metrics
+    expect(snapshot.metrics.currentStreakDays).toBe(0); // Infinity -> 0
+    expect(snapshot.metrics.longestStreakDays).toBe(0); // ' ' -> 0
+
+    // Achievements
+    expect(snapshot.achievements.length).toBe(6);
+    expect(snapshot.achievements[0].id).toBe('ACH_1');
+    expect(snapshot.achievements[0].creditAmountUsd).toBe(10);
+
+    expect(snapshot.achievements[1].id).toBe('ACH_2');
+    expect(snapshot.achievements[1].creditAmountUsd).toBeNull();
+
+    expect(snapshot.achievements[2].id).toBe('ACH_3');
+    expect(snapshot.achievements[2].creditAmountUsd).toBeNull();
+
+    expect(snapshot.achievements[3].id).toBe('ACH_4');
+    expect(snapshot.achievements[3].creditAmountUsd).toBe(20);
+
+    expect(snapshot.achievements[4].id).toBe('ACH_5');
+    expect(snapshot.achievements[4].creditAmountUsd).toBeNull();
+
+    expect(snapshot.achievements[5].id).toBe('ACH_6');
+    expect(snapshot.achievements[5].creditAmountUsd).toBeNull();
+  });
+
+  it('handles null, undefined, or array payloads safely', () => {
+    const emptySnapshot1 = normalizeRewardsSnapshot(null);
+    expect(emptySnapshot1.achievements).toEqual([]);
+    expect(emptySnapshot1.summary.plan).toBe('FREE');
+
+    const emptySnapshot2 = normalizeRewardsSnapshot([1, 2, 3]);
+    expect(emptySnapshot2.achievements).toEqual([]);
+
+    const emptySnapshot3 = normalizeRewardsSnapshot('some string');
+    expect(emptySnapshot3.achievements).toEqual([]);
+  });
 });
 
 describe('rewardsApi', () => {
