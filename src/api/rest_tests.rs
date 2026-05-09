@@ -1,4 +1,4 @@
-use super::key_bytes_from_string;
+use super::{decrypt_handoff_blob, key_bytes_from_string};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 
@@ -44,4 +44,72 @@ fn trims_whitespace() {
 fn rejects_wrong_length() {
     let err = key_bytes_from_string("tooshort").unwrap_err();
     assert!(err.to_string().contains("must decode to 32 raw bytes"));
+}
+
+#[test]
+fn decrypts_valid_blob() {
+    // Generated via Node.js crypto:
+    // Key: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+    // B64: JCQkJCQkJCQkJCQkJCQkJO0jqP9aSaielDGEQULvHaKPe7g8HW8rFwWa2g==
+    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let b64 = "JCQkJCQkJCQkJCQkJCQkJO0jqP9aSaielDGEQULvHaKPe7g8HW8rFwWa2g==";
+    let decrypted = decrypt_handoff_blob(b64, key).unwrap();
+    assert_eq!(decrypted, "hello world");
+}
+
+#[test]
+fn decrypt_fails_if_too_short() {
+    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let b64 = STANDARD.encode([0u8; 31]);
+    let err = decrypt_handoff_blob(&b64, key).unwrap_err();
+    assert!(err.to_string().contains("encrypted payload too short"));
+}
+
+#[test]
+fn decrypt_fails_on_invalid_base64() {
+    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let err = decrypt_handoff_blob("not-base64!!!", key).unwrap_err();
+    assert!(err.to_string().contains("base64-decode encrypted payload"));
+}
+
+#[test]
+fn decrypt_fails_on_wrong_key() {
+    let key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; // wrong key
+    let b64 = "JCQkJCQkJCQkJCQkJCQkJO0jqP9aSaielDGEQULvHaKPe7g8HW8rFwWa2g==";
+    let err = decrypt_handoff_blob(b64, key).unwrap_err();
+    assert!(err.to_string().contains("AES-GCM decrypt failed"));
+}
+
+#[test]
+fn decrypt_fails_on_tampered_ciphertext() {
+    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let mut combined = STANDARD.decode("JCQkJCQkJCQkJCQkJCQkJO0jqP9aSaielDGEQULvHaKPe7g8HW8rFwWa2g==").unwrap();
+    // Tamper with the last byte of ciphertext
+    let last = combined.len() - 1;
+    combined[last] ^= 0xFF;
+    let b64 = STANDARD.encode(combined);
+    let err = decrypt_handoff_blob(&b64, key).unwrap_err();
+    assert!(err.to_string().contains("AES-GCM decrypt failed"));
+}
+
+#[test]
+fn decrypt_fails_on_invalid_utf8() {
+    // Need a valid AES-GCM payload that decrypts to non-UTF8 bytes
+    // Using Node.js to generate:
+    // const crypto = require('crypto');
+    // const key = Buffer.alloc(32, 'B');
+    // const iv = Buffer.alloc(16, '$');
+    // const plaintext = Buffer.from([0xFF, 0xFE, 0xFD]);
+    // const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    // let ct = cipher.update(plaintext);
+    // ct = Buffer.concat([ct, cipher.final()]);
+    // const tag = cipher.getAuthTag();
+    // const combined = Buffer.concat([iv, tag, ct]);
+    // console.log(combined.toString('base64'));
+    // -> JCQkJCQkJCQkJCQkJCQkJI9mD7G5mIu67Hq+f565+ZpQ784=
+
+    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let b64 = "JCQkJCQkJCQkJCQkJCQkJI9mD7G5mIu67Hq+f565+ZpQ784=";
+    let err = decrypt_handoff_blob(b64, key).unwrap_err();
+    assert!(err.to_string().contains("handoff plaintext is not UTF-8"));
 }
