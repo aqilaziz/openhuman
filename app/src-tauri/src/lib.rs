@@ -31,8 +31,6 @@ mod webview_apis;
 mod whatsapp_scanner;
 mod window_state;
 mod workspace;
-#[cfg(test)]
-mod workspace_tests;
 
 #[cfg(target_os = "macos")]
 use tauri::WindowEvent;

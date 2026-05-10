@@ -6,7 +6,7 @@ fn get_workspace_root() -> PathBuf {
     file_logging::resolve_data_dir()
 }
 
-pub fn resolve_and_validate(path: &str) -> Result<PathBuf, String> {
+fn resolve_and_validate(path: &str) -> Result<PathBuf, String> {
     let root = get_workspace_root();
 
     // Support both relative paths and absolute paths that are inside the root

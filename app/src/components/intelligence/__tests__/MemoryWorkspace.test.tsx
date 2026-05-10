@@ -28,9 +28,7 @@ vi.mock('../../../lib/composio/composioApi', () => ({
 
 // Stub `openUrl` so deep-link clicks land in a mock instead of routing
 // through `tauri-plugin-opener` (which isn't loaded in the test env).
-vi.mock('../../../utils/workspaceLinks', () => ({
-  openWorkspacePath: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('../../../utils/workspaceLinks', () => ({ openWorkspacePath: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../../../utils/openUrl', () => ({ openUrl: vi.fn().mockResolvedValue(undefined) }));
 
 const { memoryTreeGraphExport, memoryTreeFlushNow, memoryTreeWipeAll, memoryTreeResetTree } =
@@ -48,9 +46,7 @@ const { listConnections, syncConnection } =
   };
 
 const { openUrl } = (await import('../../../utils/openUrl')) as unknown as { openUrl: Mock };
-const { openWorkspacePath } = (await import('../../../utils/workspaceLinks')) as unknown as {
-  openWorkspacePath: Mock;
-};
+const { openWorkspacePath } = (await import('../../../utils/workspaceLinks')) as unknown as { openWorkspacePath: Mock };
 
 function makeSummary(partial: Partial<GraphNode>): GraphNode {
   return {
@@ -135,6 +131,37 @@ describe('MemoryWorkspace (graph view)', () => {
     });
   });
 
+  it('"Open Folder" triggers openWorkspacePath and handles errors gracefully', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<MemoryWorkspace />);
+    const button = await screen.findByTestId('memory-reveal-workspace');
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(openWorkspacePath).toHaveBeenCalledWith('/tmp/workspace/memory_tree/content');
+    });
+
+    vi.mocked(openWorkspacePath).mockRejectedValueOnce(new Error('Workspace link failed'));
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalled();
+    });
+    errorSpy.mockRestore();
+  });
+
+  it('handles openUrl error gracefully when opening Obsidian', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(openUrl).mockRejectedValueOnce(new Error('Browser failed'));
+
+    renderWithProviders(<MemoryWorkspace />);
+    const button = await screen.findByTestId('memory-open-in-obsidian');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalled();
+    });
+    errorSpy.mockRestore();
+  });
+
   it('clicking a summary node opens that file in workspace', async () => {
     renderWithProviders(<MemoryWorkspace />);
     const node = await screen.findByTestId('memory-graph-node-child-1');
@@ -144,6 +171,18 @@ describe('MemoryWorkspace (graph view)', () => {
     await waitFor(() => {
       expect(openWorkspacePath).toHaveBeenCalledWith(expectedAbs);
     });
+  });
+
+  it('handles openWorkspacePath error gracefully when clicking a summary node', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(openWorkspacePath).mockRejectedValueOnce(new Error('Workspace link failed'));
+    renderWithProviders(<MemoryWorkspace />);
+    const node = await screen.findByTestId('memory-graph-node-child-1');
+    fireEvent.click(node);
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalled();
+    });
+    errorSpy.mockRestore();
   });
 
   it('hides toolkits without a memory-tree ingest provider entirely', async () => {
