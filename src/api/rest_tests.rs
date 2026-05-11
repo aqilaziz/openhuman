@@ -78,16 +78,16 @@ fn decrypts_valid_blob() {
 
 #[test]
 fn decrypt_fails_if_too_short() {
-    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
+    let key_str = STANDARD.encode([0x42u8; 32]);
     let b64 = STANDARD.encode([0u8; 31]);
-    let err = decrypt_handoff_blob(&b64, key).unwrap_err();
+    let err = decrypt_handoff_blob(&b64, &key_str).unwrap_err();
     assert!(err.to_string().contains("encrypted payload too short"));
 }
 
 #[test]
 fn decrypt_fails_on_invalid_base64() {
-    let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
-    let err = decrypt_handoff_blob("not-base64!!!", key).unwrap_err();
+    let key_str = STANDARD.encode([0x42u8; 32]);
+    let err = decrypt_handoff_blob("not-base64!!!", &key_str).unwrap_err();
     assert!(err.to_string().contains("base64-decode encrypted payload"));
 }
 
