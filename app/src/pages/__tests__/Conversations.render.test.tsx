@@ -670,4 +670,57 @@ describe('Conversations — smoke render (#1123 welcome-lock removal)', () => {
       model: 'reasoning-v1',
     });
   });
+
+  it('does not submit when Enter confirms active IME composition', async () => {
+    const { textarea } = await renderSelectedConversation();
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'にほ' } });
+    });
+    await waitFor(() => {
+      expect(textarea).toHaveValue('にほ');
+    });
+    vi.mocked(threadApi.appendMessage).mockClear();
+    vi.mocked(chatSend).mockClear();
+
+    await act(async () => {
+      fireEvent.compositionStart(textarea);
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+    });
+
+    expect(threadApi.appendMessage).not.toHaveBeenCalled();
+    expect(chatSend).not.toHaveBeenCalled();
+    expect(textarea).toHaveValue('にほ');
+  });
+
+  it('submits on Enter after IME composition ends', async () => {
+    const { textarea, thread } = await renderSelectedConversation();
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: '日本語' } });
+    });
+    await waitFor(() => {
+      expect(textarea).toHaveValue('日本語');
+    });
+    vi.mocked(threadApi.appendMessage).mockClear();
+    vi.mocked(chatSend).mockClear();
+
+    await act(async () => {
+      fireEvent.compositionStart(textarea);
+      fireEvent.compositionEnd(textarea);
+      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
+    });
+
+    await waitFor(() => {
+      expect(threadApi.appendMessage).toHaveBeenCalledWith(
+        thread.id,
+        expect.objectContaining({ content: '日本語', sender: 'user', type: 'text' })
+      );
+    });
+    expect(chatSend).toHaveBeenCalledWith({
+      threadId: thread.id,
+      message: '日本語',
+      model: 'reasoning-v1',
+    });
+  });
 });

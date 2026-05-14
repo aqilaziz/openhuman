@@ -64,6 +64,7 @@ import {
   evaluateComposerSend,
   getComposerBlockedSendFeedback,
   handleComposerSlashCommand,
+  shouldSendComposerKeyDown,
 } from './conversations/composerSendDecision';
 import {
   type AgentBubblePosition,
@@ -239,6 +240,7 @@ const Conversations = ({ variant = 'page', composer = 'text' }: ConversationsPro
   });
 
   const textInputRef = useRef<HTMLTextAreaElement>(null);
+  const compositionActiveRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -854,7 +856,7 @@ const Conversations = ({ variant = 'page', composer = 'text' }: ConversationsPro
       return;
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (shouldSendComposerKeyDown(e, compositionActiveRef.current)) {
       e.preventDefault();
       void handleSendMessage();
     }
@@ -1691,6 +1693,12 @@ const Conversations = ({ variant = 'page', composer = 'text' }: ConversationsPro
                   value={inputValue}
                   onChange={e => setInputValue(e.target.value)}
                   onKeyDown={handleInputKeyDown}
+                  onCompositionStart={() => {
+                    compositionActiveRef.current = true;
+                  }}
+                  onCompositionEnd={() => {
+                    compositionActiveRef.current = false;
+                  }}
                   placeholder="Type a message..."
                   rows={1}
                   disabled={composerInteractionBlocked}
