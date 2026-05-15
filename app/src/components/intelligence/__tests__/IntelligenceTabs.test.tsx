@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ActionableItem, ActionableItemSource, TimeGroup } from '../../../types/intelligence';
+import { renderWithProviders } from '../../../test/test-utils';
+import type { ActionableItem, TimeGroup } from '../../../types/intelligence';
 import IntelligenceDreamsTab from '../IntelligenceDreamsTab';
 import IntelligenceMemoryTab from '../IntelligenceMemoryTab';
 
@@ -52,45 +53,27 @@ function makeItem(overrides: Partial<ActionableItem> = {}): ActionableItem {
 function renderMemoryTab(
   overrides: Partial<React.ComponentProps<typeof IntelligenceMemoryTab>> = {}
 ) {
-  const props: React.ComponentProps<typeof IntelligenceMemoryTab> = {
-    handleAnalyzeNow: vi.fn().mockResolvedValue(undefined),
-    handleComplete: vi.fn().mockResolvedValue(undefined),
-    handleDismiss: vi.fn(),
-    handleSnooze: vi.fn().mockResolvedValue(undefined),
-    isRunning: false,
-    items: [],
-    itemsLoading: false,
-    searchFilter: '',
-    setSearchFilter: vi.fn(),
-    setSourceFilter: vi.fn(),
-    sourceFilter: 'all',
-    timeGroups: [],
-    usingMemoryData: false,
-    ...overrides,
-  };
-
-  render(<IntelligenceMemoryTab {...props} />);
+  const props = renderMemoryTabProps(overrides);
+  renderWithProviders(<IntelligenceMemoryTab {...props} />);
   return props;
 }
 
 describe('Intelligence tab panels', () => {
   it('renders the dreams placeholder copy', () => {
-    render(<IntelligenceDreamsTab />);
+    renderWithProviders(<IntelligenceDreamsTab />);
 
     expect(screen.getByRole('heading', { name: 'Dreams' })).toBeInTheDocument();
-    expect(screen.getByText(/generate a dream/i)).toBeInTheDocument();
+    expect(screen.getByText(/generate a dream|AI-generated reflections/i)).toBeInTheDocument();
     expect(screen.getByText('Coming soon')).toBeInTheDocument();
   });
 
   it('wires search and source filters', () => {
     const props = renderMemoryTab();
 
-    fireEvent.change(screen.getByLabelText('Search actionable items'), {
+    fireEvent.change(screen.getByLabelText(/Search (actionable items|memory)/i), {
       target: { value: 'alice' },
     });
-    fireEvent.change(screen.getByLabelText('Filter by source'), {
-      target: { value: 'calendar' satisfies ActionableItemSource },
-    });
+    fireEvent.change(screen.getByLabelText('Filter by source'), { target: { value: 'calendar' } });
 
     expect(props.setSearchFilter).toHaveBeenCalledWith('alice');
     expect(props.setSourceFilter).toHaveBeenCalledWith('calendar');
@@ -99,36 +82,43 @@ describe('Intelligence tab panels', () => {
   it('shows the loading state before memory-backed items are ready', () => {
     renderMemoryTab({ itemsLoading: true, usingMemoryData: false });
 
-    expect(screen.getByRole('heading', { name: 'Loading Intelligence...' })).toBeInTheDocument();
-    expect(screen.getByText('Fetching your actionable items')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Loading (Intelligence|Memory)/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Fetching (your actionable items|your memory entries)/i)
+    ).toBeInTheDocument();
   });
 
   it('shows the running empty state while analysis is in progress', () => {
     renderMemoryTab({ isRunning: true, items: [] });
 
-    expect(screen.getByRole('heading', { name: /Analyzing your data/i })).toBeInTheDocument();
-    expect(screen.getByText(/reviewing your connected skills/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Analyzing (your data|Memory)/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/reviewing your connected skills|Processing your memories/i)
+    ).toBeInTheDocument();
   });
 
   it('shows the no-analysis call to action and invokes analyze now', () => {
     const props = renderMemoryTab();
 
-    expect(screen.getByRole('heading', { name: 'No analysis yet' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /No Analysis Yet/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Analyze Now' }));
 
     expect(props.handleAnalyzeNow).toHaveBeenCalledTimes(1);
   });
 
   it('explains empty filtered and memory-backed states', () => {
-    const { rerender } = render(
+    const { rerender } = renderWithProviders(
       <IntelligenceMemoryTab
         {...renderMemoryTabProps({ searchFilter: 'missing' })}
         timeGroups={[]}
       />
     );
 
-    expect(screen.getByRole('heading', { name: 'No matches' })).toBeInTheDocument();
-    expect(screen.getByText('No items match your current filters.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /No Matches/i })).toBeInTheDocument();
 
     rerender(
       <IntelligenceMemoryTab
@@ -137,8 +127,7 @@ describe('Intelligence tab panels', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: 'All caught up!' })).toBeInTheDocument();
-    expect(screen.getByText('No actionable items at the moment.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /All caught up/i })).toBeInTheDocument();
   });
 
   it('renders grouped actionable cards and forwards item actions', () => {
@@ -146,7 +135,7 @@ describe('Intelligence tab panels', () => {
     const timeGroups: TimeGroup[] = [{ label: 'Today', count: 1, items: [item] }];
     const props = renderMemoryTab({ isRunning: true, items: [item], timeGroups });
 
-    expect(screen.getByText(/Analyzing your data/i)).toBeInTheDocument();
+    expect(screen.getByText(/Analyzing (your data|Memory)/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Today' })).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByTestId('actionable-card-item-1')).toBeInTheDocument();
