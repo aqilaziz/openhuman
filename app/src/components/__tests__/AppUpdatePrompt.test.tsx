@@ -8,7 +8,7 @@
  *     (`ready_to_install`)
  *   - error surface with retry path
  */
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/test-utils';
@@ -239,12 +239,11 @@ describe('AppUpdatePrompt', () => {
       expect(screen.queryByText('Update failed')).not.toBeInTheDocument();
     });
 
-    emitStatus('checking');
-    emitStatus('error');
-
-    await waitFor(() => {
-      expect(screen.queryByText('Update failed')).not.toBeInTheDocument();
+    await act(async () => {
+      emitStatus('checking');
+      emitStatus('error');
     });
+    expect(screen.queryByText('Update failed')).not.toBeInTheDocument();
   });
 
   it('renders nothing when not in Tauri', async () => {
