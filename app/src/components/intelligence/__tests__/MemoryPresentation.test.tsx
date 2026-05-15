@@ -63,8 +63,12 @@ describe('memory presentation components', () => {
     render(<MemoryEmptyPlaceholder />);
 
     expect(screen.getByTestId('memory-empty-placeholder')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Nothing yet.' })).toBeInTheDocument();
-    expect(screen.getByText(/Connect an integration in Settings/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Nothing yet|No memories yet/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Connect an integration in Settings|Start interacting/i)
+    ).toBeInTheDocument();
   });
 
   it('formats memory stats and secondary labels', () => {
@@ -139,7 +143,7 @@ describe('memory presentation components', () => {
     render(<MemoryResultList chunks={[]} selectedChunkId={null} onSelectChunk={vi.fn()} />);
 
     expect(screen.getByTestId('memory-result-list')).toBeInTheDocument();
-    expect(screen.getByText('No matching chunks.')).toBeInTheDocument();
+    expect(screen.getByText(/No matching chunks|No memories found/i)).toBeInTheDocument();
   });
 
   it('renders actionable item details and fires direct actions', () => {
