@@ -111,6 +111,26 @@ pub async fn rpc_handler(State(state): State<AppState>, Json(req): Json<RpcReque
                 );
             } else if is_session_expired_error(&display_message) {
                 tracing::info!("[rpc] {} -> err ({}ms): {}", method, ms, display_message);
+            } else if crate::core::observability::is_transient_message_failure(&display_message) {
+                // Downstream call (backend_api / integrations / provider) already
+                // demoted the underlying transient failure to a warn. The error
+                // string still propagates up to here; re-reporting at error level
+                // would re-create the very Sentry noise the lower-layer demote
+                // was meant to avoid (#8Z, #93, #8W, #96).
+                //
+                // Redact before logging — `display_message` is upstream-derived
+                // (backend / provider response) and can carry URL fragments,
+                // query params, or pasted-through provider error text that
+                // includes tokens. `sanitize_api_error` runs the same scrub
+                // used in the SessionExpired publish path below.
+                let redacted =
+                    crate::openhuman::providers::ops::sanitize_api_error(&display_message);
+                tracing::warn!(
+                    method = %method,
+                    elapsed_ms = ms as u64,
+                    error = %redacted,
+                    "[rpc] transient downstream failure — not reporting to Sentry (message redacted)"
+                );
             } else {
                 crate::core::observability::report_error_or_expected(
                     display_message.as_str(),
@@ -179,6 +199,19 @@ pub async fn invoke_method(state: AppState, method: &str, params: Value) -> Resu
 }
 
 /// Helper to determine if an error message indicates an expired or invalid session.
+///
+/// Deliberately **looser** than
+/// [`crate::core::observability::is_session_expired_message`]: this
+/// dispatch-site predicate also matches the generic `"401 + unauthorized"` /
+/// `"invalid token"` pair so token cleanup +
+/// `DomainEvent::SessionExpired` publish fire on *any* 401, including
+/// BYO-key provider failures (which clear the stale local token even if
+/// the user mis-configured an OpenAI / Anthropic key). The strict
+/// classifier in `observability` is for the agent / web-channel
+/// `report_error_or_expected` call sites, where matching too loosely would
+/// silence actionable BYO-key configuration errors (OPENHUMAN-TAURI-26
+/// rationale: the agent-layer demote must NOT also swallow generic
+/// provider 401s).
 ///
 /// "No backend session token" is also treated as a session-expired signal: the
 /// auth profile is missing entirely (the user was never signed in, or their
@@ -422,7 +455,7 @@ async fn telegram_auth_handler(Query(query): Query<TelegramAuthQuery>) -> impl I
         }
     };
 
-    let api_url = crate::api::config::effective_api_url(&config.api_url);
+    let api_url = crate::api::config::effective_backend_api_url(&config.api_url);
 
     let client = match crate::api::rest::BackendOAuthClient::new(&api_url) {
         Ok(c) => c,
@@ -656,8 +689,8 @@ async fn webhook_events_handler() -> Response {
 /// Handler for the root endpoint, returning server information and available endpoints.
 async fn root_handler() -> impl IntoResponse {
     let api_server = match crate::openhuman::config::Config::load_or_init().await {
-        Ok(cfg) => crate::api::config::effective_api_url(&cfg.api_url),
-        Err(_) => crate::api::config::effective_api_url(&None),
+        Ok(cfg) => crate::api::config::effective_backend_api_url(&cfg.api_url),
+        Err(_) => crate::api::config::effective_backend_api_url(&None),
     };
 
     (
@@ -1238,7 +1271,7 @@ pub async fn bootstrap_skill_runtime(embedded_core: bool) {
                 return;
             }
         };
-        let api_url = crate::api::config::effective_api_url(&config.api_url);
+        let api_url = crate::api::config::effective_backend_api_url(&config.api_url);
         let token = match crate::api::jwt::get_session_token(&config) {
             Ok(Some(t)) => t,
             Ok(None) => {
