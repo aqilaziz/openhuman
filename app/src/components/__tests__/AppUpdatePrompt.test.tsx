@@ -225,6 +225,28 @@ describe('AppUpdatePrompt', () => {
     });
   });
 
+  it('does not re-open the same dismissed update error on the next background cycle', async () => {
+    renderWithProviders(
+      <AppUpdatePrompt autoCheck={false} initialCheckDelayMs={0} recheckIntervalMs={0} />
+    );
+    await waitFor(() => expect(statusListeners.length).toBeGreaterThan(0));
+
+    emitStatus('error');
+    await waitFor(() => expect(screen.getByText('Update failed')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^Dismiss$/i }));
+    await waitFor(() => {
+      expect(screen.queryByText('Update failed')).not.toBeInTheDocument();
+    });
+
+    emitStatus('checking');
+    emitStatus('error');
+
+    await waitFor(() => {
+      expect(screen.queryByText('Update failed')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders nothing when not in Tauri', async () => {
     mockIsTauri.mockReturnValue(false);
 
