@@ -129,7 +129,7 @@ describe('memory presentation components', () => {
     expect(within(list).getByText('older')).toBeInTheDocument();
 
     const selectedRow = within(list).getByText('Discussed onboarding metrics with the team.');
-    expect(selectedRow.closest('button')).toHaveClass('is-active');
+    expect(selectedRow.closest('button')).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(within(list).getByText('Review launch checklist.'));
     expect(onSelectChunk).toHaveBeenCalledWith('today');
