@@ -128,6 +128,7 @@ const SettingsHome = () => {
               aria-label={t('settings.language')}
               className="text-sm border border-stone-300 rounded-lg px-3 py-1.5 bg-white text-stone-700 focus:outline-none focus:ring-2 focus:ring-ocean-500/30 cursor-pointer">
               <option value="en">English</option>
+              <option value="id">Bahasa Indonesia</option>
               <option value="zh-CN">简体中文</option>
             </select>
           ),
