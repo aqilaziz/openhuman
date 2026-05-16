@@ -172,8 +172,8 @@ describe('memory overview components', () => {
     fireEvent.change(screen.getByLabelText(/Search memor/i), { target: { value: 'atlas' } });
     expect(onSearchChange).toHaveBeenCalledWith('atlas');
 
-    expect(screen.getByText('today 1')).toBeInTheDocument();
-    expect(screen.getByText('this week 2')).toBeInTheDocument();
+    expect(screen.getByText('Today 1')).toBeInTheDocument();
+    expect(screen.getByText('This Week 2')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Email/ }));
     fireEvent.click(screen.getByRole('button', { name: /Alice Inbox/ }));
