@@ -5,6 +5,7 @@ import { HashRouter as Router, useLocation, useNavigate } from 'react-router-dom
 import { PersistGate } from 'redux-persist/integration/react';
 
 import AppRoutes from './AppRoutes';
+import AppBackground from './components/AppBackground';
 import AppUpdatePrompt from './components/AppUpdatePrompt';
 import BootCheckGate from './components/BootCheckGate/BootCheckGate';
 import BottomTabBar from './components/BottomTabBar';
@@ -13,12 +14,12 @@ import ServiceBlockingGate from './components/daemon/ServiceBlockingGate';
 import DictationHotkeyManager from './components/DictationHotkeyManager';
 import ErrorFallbackScreen from './components/ErrorFallbackScreen';
 import LocalAIDownloadSnackbar from './components/LocalAIDownloadSnackbar';
-import MeshGradient from './components/MeshGradient';
 import OpenhumanLinkModal from './components/OpenhumanLinkModal';
 import PersistRehydrationScreen from './components/PersistRehydrationScreen';
 import GlobalUpsellBanner from './components/upsell/GlobalUpsellBanner';
 import AppWalkthrough from './components/walkthrough/AppWalkthrough';
 import { MascotFrameProducer } from './features/meet/MascotFrameProducer';
+import { I18nProvider } from './lib/i18n/I18nContext';
 // [#1123] Commented out — welcome-agent onboarding replaced by Joyride walkthrough
 // import { isWelcomeLocked } from './lib/coreState/store';
 import { startNativeNotificationsService } from './lib/nativeNotifications';
@@ -58,24 +59,26 @@ function App() {
       )}>
       <Provider store={store}>
         <PersistGate loading={<PersistRehydrationScreen />} persistor={persistor}>
-          <BootCheckGate>
-            <CoreStateProvider>
-              <SocketProvider>
-                <ChatRuntimeProvider>
-                  <Router>
-                    <CommandProvider>
-                      <ServiceBlockingGate>
-                        <AppShell />
-                        <DictationHotkeyManager />
-                        <LocalAIDownloadSnackbar />
-                        <AppUpdatePrompt />
-                      </ServiceBlockingGate>
-                    </CommandProvider>
-                  </Router>
-                </ChatRuntimeProvider>
-              </SocketProvider>
-            </CoreStateProvider>
-          </BootCheckGate>
+          <I18nProvider>
+            <BootCheckGate>
+              <CoreStateProvider>
+                <SocketProvider>
+                  <ChatRuntimeProvider>
+                    <Router>
+                      <CommandProvider>
+                        <ServiceBlockingGate>
+                          <AppShell />
+                          <DictationHotkeyManager />
+                          <LocalAIDownloadSnackbar />
+                          <AppUpdatePrompt />
+                        </ServiceBlockingGate>
+                      </CommandProvider>
+                    </Router>
+                  </ChatRuntimeProvider>
+                </SocketProvider>
+              </CoreStateProvider>
+            </BootCheckGate>
+          </I18nProvider>
         </PersistGate>
       </Provider>
     </Sentry.ErrorBoundary>
@@ -178,8 +181,8 @@ function AppShell() {
 
   return (
     <div className="relative h-screen flex flex-col overflow-hidden">
-      <MeshGradient />
-      <div className="app-dotted-canvas relative z-10 flex-1 flex flex-col overflow-hidden">
+      <AppBackground />
+      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         <div
           className={`flex-1 overflow-y-auto ${
             // [#1123] welcomeLocked removed — welcome-agent onboarding replaced by Joyride walkthrough
